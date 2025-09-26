@@ -43,6 +43,7 @@ Shader "Tutorial/BasicTexturing"
             #pragma vertex vert
             #pragma fragment frag
             #pragma shader_feature _SHOWMASK_ON
+            #pragma multi_compile_instancing
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
@@ -75,6 +76,7 @@ Shader "Tutorial/BasicTexturing"
                  float _MaskCenter;
                  float _MaskFalloff;
                  half4 _MaskColor;
+                 float3 _Bounds;
             CBUFFER_END
 
             // Yaw rotation matrix
@@ -137,21 +139,34 @@ Shader "Tutorial/BasicTexturing"
             }
             
         
-            v2f vert (appdata v)
+            v2f vert (appdata v, uint instanceID : SV_InstanceID)
             {
                v2f o;
 
+               // Animate the mesh in object space
+               float3 animated = v.positionOS.xyz;
+
                // Create smooth gradient mask
-               float maskValue = saturate((v.positionOS.z - _MaskCenter) / _MaskFalloff);
+               float maskValue = saturate((animated.z - _MaskCenter) / _MaskFalloff);
                o.maskValue = maskValue;
 
                // Apply transformations in order
-               v.positionOS.xyz = rotateAroundYAxis(v.positionOS.xyz, _YawAmplitude, _Speed);
-               v.positionOS.xyz = rotateAroundZAxis(v.positionOS.xyz, _RollAmplitude * maskValue, _Speed, _WaveFreq);
-               v.positionOS.xyz = panningRotateAroundYAxis(v.positionOS.xyz, _PanningYawApmlitude * maskValue, _Speed, _WaveFreq);
-               v.positionOS.xyz = sideToSideOffset(v.positionOS.xyz, _SideAmplitude, _Speed);
+               animated = rotateAroundYAxis(animated, _YawAmplitude, _Speed);
+               animated = rotateAroundZAxis(animated, _RollAmplitude * maskValue, _Speed, _WaveFreq);
+               animated = panningRotateAroundYAxis(animated, _PanningYawApmlitude * maskValue, _Speed, _WaveFreq);
+               animated = sideToSideOffset(animated, _SideAmplitude, _Speed);
 
-               o.positionCS = TransformObjectToHClip(v.positionOS.xyz);
+               // Offset in grid based on instanceID
+               int ix = instanceID % _Bounds.x;                    // X index
+               int iy = (instanceID / _Bounds.x) % _Bounds.y;          // Y index
+               int iz = instanceID / (_Bounds.x * _Bounds.y);          // Z index
+
+               animated.xyz += float3(ix, iy, iz);
+
+               // Transform to clip space
+               o.positionCS = TransformObjectToHClip(animated);
+
+               // UVs unchanged
                o.uv = TRANSFORM_TEX(v.uv, _BaseTexture);
 
                return o;
