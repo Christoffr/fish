@@ -52,6 +52,7 @@ Shader "Tutorial/BasicTexturing"
                 float4 positionOS       : POSITION;
                 float3 normal           : NORMAL;
                 float2 uv               : TEXCOORD0;
+                uint instanceID         : SV_InstanceID;
             };
         
             struct v2f
@@ -60,6 +61,13 @@ Shader "Tutorial/BasicTexturing"
                float2 uv                : TEXCOORD0;
                float maskValue          : TEXCOORD1;
             };
+
+            struct InstanceData
+            {
+                float3 positions;
+            };
+
+            StructuredBuffer<InstanceData> instanceBuffer;
 
             TEXTURE2D(_BaseTexture);
             SAMPLER(sampler_BaseTexture);
@@ -139,7 +147,7 @@ Shader "Tutorial/BasicTexturing"
             }
             
         
-            v2f vert (appdata v, uint instanceID : SV_InstanceID)
+            v2f vert (appdata v)
             {
                v2f o;
 
@@ -156,12 +164,9 @@ Shader "Tutorial/BasicTexturing"
                animated = panningRotateAroundYAxis(animated, _PanningYawApmlitude * maskValue, _Speed, _WaveFreq);
                animated = sideToSideOffset(animated, _SideAmplitude, _Speed);
 
-               // Offset in grid based on instanceID
-               int ix = instanceID % _Bounds.x;                    // X index
-               int iy = (instanceID / _Bounds.x) % _Bounds.y;          // Y index
-               int iz = instanceID / (_Bounds.x * _Bounds.y);          // Z index
-
-               animated.xyz += float3(ix, iy, iz);
+               // Offset based on instanceID
+               float3 worldPos = instanceBuffer[v.instanceID].positions;
+               animated.xyz += worldPos; 
 
                // Transform to clip space
                o.positionCS = TransformObjectToHClip(animated);

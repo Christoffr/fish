@@ -540,6 +540,7 @@ GameObject:
   - component: {fileID: 1158329793}
   - component: {fileID: 1158329794}
   - component: {fileID: 1158329795}
+  - component: {fileID: 1158329796}
   m_Layer: 0
   m_Name: Test
   m_TagString: Untagged
@@ -569,7 +570,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1158329791}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9447e2b00c3f7f84aa83be2d9cfb492f, type: 3}
   m_Name: 
@@ -592,6 +593,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ms: {fileID: 2084104491}
   fpsText: {fileID: 1219196384}
+--- !u!114 &1158329796
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1158329791}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57a53d6a387e08b449938681e5bd7df3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  computeShader: {fileID: 7200000, guid: f5875267ebe5f4d47b8871f07f413130, type: 3}
+  mesh: {fileID: -4747523141729969806, guid: 3c518ab5810f84e4a8d3f4b42905c2ae, type: 3}
+  material: {fileID: 2100000, guid: 1b72f4d8ee4dc0c4090cfd0353833b6c, type: 2}
+  instanceCount: 10000
 --- !u!1 &1219196382
 GameObject:
   m_ObjectHideFlags: 0
