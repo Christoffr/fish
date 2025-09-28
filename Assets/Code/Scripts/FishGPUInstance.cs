@@ -1,7 +1,6 @@
-using Unity.VisualScripting;
 using UnityEngine;
 
-public class Fish : MonoBehaviour
+public class FishGPUInstance : MonoBehaviour
 {
     [System.Serializable]
     public struct InstanceData
@@ -15,7 +14,7 @@ public class Fish : MonoBehaviour
     [SerializeField] private Material material;
     [SerializeField] private int instanceCount = 1000;
     [SerializeField] private Vector3 bounds = new Vector3(50f, 25f, 50f);
-    [SerializeField] private float fishSpeed = 0.001f;
+    [SerializeField] private float fishSpeed = 1f;
 
     private ComputeBuffer instanceBuffer;
     private InstanceData[] instances;
@@ -31,7 +30,7 @@ public class Fish : MonoBehaviour
     private void Update()
     {
         // Update compute shader with parameters
-        computeShader.SetFloat("deltaTime", Time.time);
+        computeShader.SetFloat("deltaTime", Time.deltaTime);
         computeShader.SetInt("instanceCount", instanceCount);
         computeShader.SetVector("bounds", bounds);
         computeShader.SetFloat("fishSpeed", fishSpeed);
@@ -57,17 +56,12 @@ public class Fish : MonoBehaviour
         // Initialize the positions
         for (int i = 0; i < instanceCount; i++)
         {
-            Vector3 position = new Vector3(
-                 Random.Range(-bounds.x * 0.5f, bounds.x * 0.5f),
-                 Random.Range(-bounds.y * 0.5f, bounds.y * 0.5f),
-                 Random.Range(-bounds.z * 0.5f, bounds.z * 0.5f)
-             );
+            Vector3 position = Random.insideUnitSphere;
+            position.x *= bounds.x;
+            position.y *= bounds.y;
+            position.z *= bounds.z;
 
-            Vector3 direction = new Vector3(
-                Random.Range(-1f, 1f),
-                Random.Range(-0.5f, 0.5f),
-                Random.Range(-1f, 1f)
-             ).normalized;
+            Vector3 direction = Random.insideUnitSphere;
 
             instances[i] = new InstanceData
             {
@@ -100,6 +94,6 @@ public class Fish : MonoBehaviour
     {
         // Visualize the bounds in the scene view
         Gizmos.color = Color.yellow;
-        Gizmos.DrawWireCube(Vector3.zero, new Vector3(50, 20, 50));
+        Gizmos.DrawWireCube(transform.position, bounds);
     }
 }

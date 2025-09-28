@@ -1,4 +1,4 @@
-Shader "Tutorial/Fish"
+Shader "Tutorial/FishGPUInstance"
 {
     Properties
     {
@@ -43,6 +43,7 @@ Shader "Tutorial/Fish"
             #pragma vertex vert
             #pragma fragment frag
             #pragma shader_feature _SHOWMASK_ON
+            #pragma multi_compile_instancing
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
@@ -51,6 +52,7 @@ Shader "Tutorial/Fish"
                 float4 positionOS       : POSITION;
                 float3 normal           : NORMAL;
                 float2 uv               : TEXCOORD0;
+                uint instanceID         : SV_InstanceID;
             };
         
             struct v2f
@@ -59,6 +61,14 @@ Shader "Tutorial/Fish"
                float2 uv                : TEXCOORD0;
                float maskValue          : TEXCOORD1;
             };
+
+            struct InstanceData
+            {
+                float3 position;
+                float3 direction;
+            };
+
+            StructuredBuffer<InstanceData> instanceBuffer;
 
             TEXTURE2D(_BaseTexture);
             SAMPLER(sampler_BaseTexture);
@@ -75,6 +85,7 @@ Shader "Tutorial/Fish"
                  float _MaskCenter;
                  float _MaskFalloff;
                  half4 _MaskColor;
+                 float3 _Bounds;
             CBUFFER_END
 
             // LookAt rotation matrix
@@ -169,14 +180,18 @@ Shader "Tutorial/Fish"
                float maskValue = saturate((animated.z - _MaskCenter) / _MaskFalloff);
                o.maskValue = maskValue;
 
-               /*float3x3 directionMatrix = createLookAtMatrix(instanceBuffer[v.instanceID].direction);
-               animated = mul(directionMatrix, animated);*/
+               float3x3 directionMatrix = createLookAtMatrix(instanceBuffer[v.instanceID].direction);
+               animated = mul(directionMatrix, animated);
 
                // Apply transformations in order
                animated = rotateAroundYAxis(animated, _YawAmplitude, _Speed);
                animated = rotateAroundZAxis(animated, _RollAmplitude * maskValue, _Speed, _WaveFreq);
                animated = panningRotateAroundYAxis(animated, _PanningYawApmlitude * maskValue, _Speed, _WaveFreq);
                animated = sideToSideOffset(animated, _SideAmplitude, _Speed);
+
+               // Offset based on instanceID
+               float3 worldPos = instanceBuffer[v.instanceID].position;
+               animated.xyz += worldPos; 
 
                // Transform to clip space
                o.positionCS = TransformObjectToHClip(animated);

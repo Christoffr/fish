@@ -20,8 +20,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Fish
-  m_Shader: {fileID: 4800000, guid: d2207e48204180c47a7c84c46194968f, type: 3}
+  m_Name: FishGPUInstance
+  m_Shader: {fileID: 4800000, guid: 3ef79082f579f264eb6deeaea3a1c57a, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
