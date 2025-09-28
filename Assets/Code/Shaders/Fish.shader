@@ -64,7 +64,7 @@ Shader "Tutorial/BasicTexturing"
 
             struct InstanceData
             {
-                float3 positions;
+                float3 position;
             };
 
             StructuredBuffer<InstanceData> instanceBuffer;
@@ -165,7 +165,7 @@ Shader "Tutorial/BasicTexturing"
                animated = sideToSideOffset(animated, _SideAmplitude, _Speed);
 
                // Offset based on instanceID
-               float3 worldPos = instanceBuffer[v.instanceID].positions;
+               float3 worldPos = instanceBuffer[v.instanceID].position;
                animated.xyz += worldPos; 
 
                // Transform to clip space

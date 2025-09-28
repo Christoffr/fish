@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class Fish : MonoBehaviour
@@ -75,5 +76,12 @@ public class Fish : MonoBehaviour
     {
         // Set the instance buffer on the material
         material.SetBuffer("instanceBuffer", instanceBuffer);
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        // Visualize the bounds in the scene view
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireCube(Vector3.zero, new Vector3(50, 20, 50));
     }
 }
