@@ -7,12 +7,15 @@ public class Fish : MonoBehaviour
     public struct InstanceData
     {
         public Vector3 position;
+        public Vector3 direction;
     }
 
     [SerializeField] private ComputeShader computeShader;
     [SerializeField] private Mesh mesh;
     [SerializeField] private Material material;
     [SerializeField] private int instanceCount = 1000;
+    [SerializeField] private Vector3 bounds = new Vector3(50f, 25f, 50f);
+    [SerializeField] private float fishSpeed = 0.001f;
 
     private ComputeBuffer instanceBuffer;
     private InstanceData[] instances;
@@ -27,8 +30,11 @@ public class Fish : MonoBehaviour
 
     private void Update()
     {
-        // Update compute shader with time
+        // Update compute shader with parameters
         computeShader.SetFloat("deltaTime", Time.time);
+        computeShader.SetInt("instanceCount", instanceCount);
+        computeShader.SetVector("bounds", bounds);
+        computeShader.SetFloat("fishSpeed", fishSpeed);
 
         // Execute compute shader
         int threadGroups = Mathf.CeilToInt(instanceCount / 64f);
@@ -51,13 +57,22 @@ public class Fish : MonoBehaviour
         // Initialize the positions
         for (int i = 0; i < instanceCount; i++)
         {
+            Vector3 position = new Vector3(
+                 Random.Range(-bounds.x * 0.5f, bounds.x * 0.5f),
+                 Random.Range(-bounds.y * 0.5f, bounds.y * 0.5f),
+                 Random.Range(-bounds.z * 0.5f, bounds.z * 0.5f)
+             );
+
+            Vector3 direction = new Vector3(
+                Random.Range(-1f, 1f),
+                Random.Range(-0.5f, 0.5f),
+                Random.Range(-1f, 1f)
+             ).normalized;
+
             instances[i] = new InstanceData
             {
-                position = new Vector3(
-                    Random.Range(-25f, 25f),
-                    Random.Range(-10f, 10f),
-                    Random.Range(-25f, 25f)
-                )
+                position = position,
+                direction = direction
             };
         }
     }
@@ -65,7 +80,7 @@ public class Fish : MonoBehaviour
     private void SetupBuffers()
     {
         // Instance data buffer
-        instanceBuffer = new ComputeBuffer(instanceCount, sizeof(float) * 3);
+        instanceBuffer = new ComputeBuffer(instanceCount, sizeof(float) * 6);
         instanceBuffer.SetData(instances);
 
         kernelID = computeShader.FindKernel("CSMain");
@@ -76,6 +91,9 @@ public class Fish : MonoBehaviour
     {
         // Set the instance buffer on the material
         material.SetBuffer("instanceBuffer", instanceBuffer);
+
+        // Pass the bounds to the shader
+        material.SetVector("_Bounds", bounds);
     }
 
     void OnDrawGizmosSelected()

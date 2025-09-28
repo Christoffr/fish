@@ -65,6 +65,7 @@ Shader "Tutorial/BasicTexturing"
             struct InstanceData
             {
                 float3 position;
+                float3 direction;
             };
 
             StructuredBuffer<InstanceData> instanceBuffer;

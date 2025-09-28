@@ -3,16 +3,57 @@
 struct InstanceData
 {
     float3 position;
+    float3 direction;
 };
 
 RWStructuredBuffer<InstanceData> instanceBuffer;
 float deltaTime;
+float3 bounds;
+int instanceCount;
+float fishSpeed;
 
 [numthreads(64,1,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    float time = id.x * 0.1 + deltaTime;
-    instanceBuffer[id.x].position.x += cos(time) * 0.3;
-    instanceBuffer[id.y].position.y += sin(time) * 0.3;
-    instanceBuffer[id.z].position.z += sin(time * 0.2);
+    uint index = id.x;
+    if (index >= (uint)instanceCount) return;
+
+    // Get the current instance data
+    InstanceData fish = instanceBuffer[index];
+
+    // Move along the direction vector
+    fish.position += fish.direction * fishSpeed * deltaTime;
+
+    float3 halfBounds = bounds * 0.5;
+
+    // Wrap around boundaries
+    if (fish.position.x > halfBounds.x) 
+    {
+        fish.position.x = -halfBounds.x;
+    }
+    else if (fish.position.x < -halfBounds.x) 
+    {
+        fish.position.x = halfBounds.x;
+    }
+    
+    if (fish.position.y > halfBounds.y) 
+    {
+        fish.position.y = -halfBounds.y;
+    }
+    else if (fish.position.y < -halfBounds.y) 
+    {
+        fish.position.y = halfBounds.y;
+    }
+    
+    if (fish.position.z > halfBounds.z) 
+    {
+        fish.position.z = -halfBounds.z;
+    }
+    else if (fish.position.z < -halfBounds.z) 
+    {
+        fish.position.z = halfBounds.z;
+    }
+
+    //Write back the updated data
+    instanceBuffer[index] = fish;
 }
