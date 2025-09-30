@@ -7,50 +7,43 @@ public class FishGPUInstance : MonoBehaviour
     {
         public Vector3 position;
         public Vector3 direction;
-        public Vector3 target;
     }
 
-    [SerializeField] private ComputeShader computeShader;
-    [SerializeField] private Mesh mesh;
-    [SerializeField] private Material material;
-    [SerializeField] private int instanceCount = 1000;
-    [SerializeField] private Vector3 bounds = new Vector3(50f, 25f, 50f);
-    [SerializeField] private float fishSpeed = 1f;
-    [SerializeField] private Transform target;
-    [SerializeField] private float separation = 1.0f;
-    [SerializeField] private float alignment = 1.0f;
-    [SerializeField] private float cohesion = 1.0f;
+    [SerializeField] private ComputeShader _computeShader;
+    [SerializeField] private BoidsSettingsOS _settings;
 
     private ComputeBuffer instanceBuffer;
     private InstanceData[] instances;
     private int kernelID;
+    private int currentInstanceCount = 0;
 
     private void Start()
     {
-        InitializeData();
-        SetupBuffers();
-        SetupMaterial();
+        InitializeInstances();
     }
 
     private void Update()
     {
+        if (currentInstanceCount != _settings.InstanceCount)
+            InitializeInstances();
+
         // Update compute shader with parameters
-        computeShader.SetFloat("deltaTime", Time.deltaTime);
-        computeShader.SetInt("instanceCount", instanceCount);
-        computeShader.SetVector("bounds", bounds);
-        computeShader.SetFloat("fishSpeed", fishSpeed);
-        computeShader.SetVector("target", target.position);
-        computeShader.SetFloat("separationWeight", separation);
-        computeShader.SetFloat("alignmentWeight", alignment);
-        computeShader.SetFloat("cohesionWeight", cohesion);
+        _computeShader.SetFloat("deltaTime", Time.deltaTime);
+        _computeShader.SetInt("instanceCount", _settings.InstanceCount);
+        _computeShader.SetVector("bounds", _settings.Bounds);
+        _computeShader.SetFloat("fishSpeed", _settings.FishSpeed);
+        _computeShader.SetFloat("separationWeight", _settings.Separation);
+        _computeShader.SetFloat("alignmentWeight", _settings.Alignment);
+        _computeShader.SetFloat("cohesionWeight", _settings.Cohesion);
 
         // Execute compute shader
-        int threadGroups = Mathf.CeilToInt(instanceCount / 64f);
-        computeShader.Dispatch(kernelID, threadGroups, 1, 1);
+        int threadGroups = Mathf.CeilToInt(_settings.InstanceCount / 64f);
+        _computeShader.Dispatch(kernelID, threadGroups, 1, 1);
 
         // Render all instances
-        RenderParams renderParams = new RenderParams(material);
-        Graphics.RenderMeshPrimitives(renderParams, mesh, 0, instanceCount);
+        RenderParams renderParams = new RenderParams(_settings.Material);
+        Graphics.RenderMeshPrimitives(renderParams, _settings.Mesh, 0, _settings.InstanceCount);
+
     }
 
     private void OnDestroy()
@@ -58,17 +51,24 @@ public class FishGPUInstance : MonoBehaviour
         instanceBuffer?.Release();
     }
 
-    private void InitializeData()
+    private void InitializeInstances()
     {
-        instances = new InstanceData[instanceCount];
+        // Release the old buffer
+        instanceBuffer?.Release();
 
-        // Initialize the positions
-        for (int i = 0; i < instanceCount; i++)
+        // Store current count
+        currentInstanceCount = _settings.InstanceCount;
+
+        // Initialize the array
+        instances = new InstanceData[currentInstanceCount];
+
+        // Initialize positions and directions
+        for (int i = 0; i < currentInstanceCount; i++)
         {
             Vector3 position = Random.onUnitSphere;
-            position.x *= bounds.x;
-            position.y *= bounds.y;
-            position.z *= bounds.z;
+            position.x *= _settings.Bounds.x;
+            position.y *= _settings.Bounds.y;
+            position.z *= _settings.Bounds.z;
 
             Vector3 direction = Random.onUnitSphere;
 
@@ -76,34 +76,28 @@ public class FishGPUInstance : MonoBehaviour
             {
                 position = position,
                 direction = direction,
-                target = target.position
             };
         }
-    }
 
-    private void SetupBuffers()
-    {
-        // Instance data buffer
-        instanceBuffer = new ComputeBuffer(instanceCount, sizeof(float) * 9);
+        // Create new buffer with correct size
+        instanceBuffer = new ComputeBuffer(currentInstanceCount, sizeof(float) * 6);
         instanceBuffer.SetData(instances);
 
-        kernelID = computeShader.FindKernel("CSMain");
-        computeShader.SetBuffer(kernelID, "instanceBuffer", instanceBuffer);
-    }
+        // Set buffer on compute shader
+        _computeShader.SetBuffer(kernelID, "instanceBuffer", instanceBuffer);
 
-    private void SetupMaterial()
-    {
-        // Set the instance buffer on the material
-        material.SetBuffer("instanceBuffer", instanceBuffer);
-
-        // Pass the bounds to the shader
-        material.SetVector("_Bounds", bounds);
+        // Set buffer on material
+        _settings.Material.SetBuffer("instanceBuffer", instanceBuffer);
+        _settings.Material.SetVector("_Bounds", _settings.Bounds);
     }
 
     void OnDrawGizmos()
     {
-        // Visualize the bounds in the scene view
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireCube(transform.position, bounds);
+        if (_settings != null)
+        {
+            // Visualize the bounds in the scene view
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireCube(transform.position, _settings.Bounds);
+        }
     }
 }

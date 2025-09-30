@@ -11,7 +11,6 @@ float deltaTime;
 float3 bounds;
 int instanceCount;
 float fishSpeed;
-float3 target;
 float separationWeight;
 float alignmentWeight;
 float cohesionWeight;
