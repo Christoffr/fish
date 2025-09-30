@@ -11,6 +11,10 @@ float deltaTime;
 float3 bounds;
 int instanceCount;
 float fishSpeed;
+float3 target;
+float separationWeight;
+float alignmentWeight;
+float cohesionWeight;
 
 [numthreads(64,1,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
@@ -21,8 +25,48 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     // Get the current instance data
     InstanceData fish = instanceBuffer[index];
 
-    // Move along the direction vector
-    fish.position += fish.direction * fishSpeed * deltaTime;
+    float3 separation = float3(0,0,0);
+    float3 alignment = float3(0,0,0);
+    float3 cohesion = float3(0,0,0);
+    int neigbours = 0;
+
+    for (int i = 0; i < instanceCount; i++)
+    {
+        if(index == (uint)i) continue;
+
+        float dist = distance(fish.position, instanceBuffer[i].position);
+
+        if (dist < 5 && dist > 0.01)
+        {
+            // Separation: steer away from nearby boids
+            separation += (fish.position - instanceBuffer[i].position) / dist;
+
+            // Alignment: match direction of nearby boids
+            alignment += instanceBuffer[i].direction;
+
+            // Cohesion: steer towards center of nearby boids
+            cohesion += instanceBuffer[i].position;
+
+            neigbours++;
+        }
+    }
+
+    if(neigbours > 0)
+    {
+        alignment /= neigbours;
+        cohesion = (cohesion / neigbours) - fish.position;
+
+        separation = normalize(separation);
+        alignment = normalize(alignment);
+        cohesion = normalize(cohesion);
+
+        fish.direction += separation * separationWeight;
+        fish.direction += alignment * alignmentWeight;
+        fish.direction += cohesion * cohesionWeight;
+    }
+
+    fish.direction = normalize(fish.direction) * fishSpeed;
+    fish.position += fish.direction * deltaTime; 
 
     float3 halfBounds = bounds * 0.5;
 
