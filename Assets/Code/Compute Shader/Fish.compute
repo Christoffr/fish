@@ -1,4 +1,6 @@
-#pragma kernel CSMain
+﻿#pragma kernel CSMain
+#pragma kernel AssignCells
+#pragma kernel BuildCellRanges
 
 struct InstanceData
 {
@@ -6,7 +8,18 @@ struct InstanceData
     float3 direction;
 };
 
+struct CellData
+{
+    uint fishIndex;
+    uint cellIndex;
+};
+
 RWStructuredBuffer<InstanceData> instanceBuffer;
+RWStructuredBuffer<CellData> cellDataBuffer;
+StructuredBuffer<CellData> sortedCellDataBuffer;
+RWStructuredBuffer<int> cellStartBuffer;
+RWStructuredBuffer<int> cellEndBuffer;
+
 float deltaTime;
 float3 bounds;
 int instanceCount;
@@ -15,45 +28,132 @@ float separationWeight;
 float alignmentWeight;
 float cohesionWeight;
 
+float cellSize;
+
+[numthreads(64,1,1)]
+void AssignCells (uint3 id : SV_DispatchThreadID)
+{
+    uint index = id.x;
+    if (index >= (uint)instanceCount) return;
+
+    float3 pos = instanceBuffer[index].position;
+    float3 halfBounds = bounds * 0.5;
+    
+    // Convert position to cell coordinates
+    // Offset by halfBounds to handle negative coordinates
+    int3 cell = int3(floor((pos + halfBounds) / cellSize));
+    
+    // Grid resolution (how many cells along each axis)
+    int3 gridRes = int3(floor(bounds / cellSize));
+    
+    // Clamp to be safe (floating point edge cases)
+    cell = clamp(cell, int3(0,0,0), gridRes - 1);
+    
+    // Flatten into a 1D index
+    uint flatIndex = (uint)(cell.x + cell.y * gridRes.x + cell.z * gridRes.x * gridRes.y);
+    
+    // Store fish index and its flattened cell index
+    cellDataBuffer[index].fishIndex = index;
+    cellDataBuffer[index].cellIndex = flatIndex;
+}
+
+[numthreads(64,1,1)]
+void BuildCellRanges(uint3 id : SV_DispatchThreadID)
+{
+    uint i = id.x;
+    if (i >= (uint)instanceCount) return;
+
+    uint currentCell = sortedCellDataBuffer[i].cellIndex;
+
+    // Mark start of a new cell
+    if (i == 0 || currentCell != sortedCellDataBuffer[i - 1].cellIndex)
+    {
+        cellStartBuffer[currentCell] = (int)i;
+    }
+
+    // Mark end of a cell (exclusive)
+    if (i == (uint)instanceCount - 1 || currentCell != sortedCellDataBuffer[i + 1].cellIndex)
+    {
+        cellEndBuffer[currentCell] = (int)(i + 1);
+    }
+}
+
 [numthreads(64,1,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
     uint index = id.x;
     if (index >= (uint)instanceCount) return;
 
-    // Get the current instance data
     InstanceData fish = instanceBuffer[index];
+    float3 halfBounds = bounds * 0.5;
+
+    // Calculate which cell this fish is in
+    int3 cell = int3(floor((fish.position + halfBounds) / cellSize));
+    int3 gridRes = int3(floor(bounds / cellSize));
+    cell = clamp(cell, int3(0,0,0), gridRes - 1);
 
     float3 separation = float3(0,0,0);
     float3 alignment = float3(0,0,0);
     float3 cohesion = float3(0,0,0);
-    int neigbours = 0;
+    int neighbors = 0;
 
-    for (int i = 0; i < instanceCount; i++)
+    // Check all 27 neighboring cells (3x3x3 including center)
+    for (int x = -1; x <= 1; x++)
     {
-        if(index == (uint)i) continue;
-
-        float dist = distance(fish.position, instanceBuffer[i].position);
-
-        if (dist < 5 && dist > 0.01)
+        for (int y = -1; y <= 1; y++)
         {
-            // Separation: steer away from nearby boids
-            separation += (fish.position - instanceBuffer[i].position) / dist;
+            for (int z = -1; z <= 1; z++)
+            {
+                int3 neighborCell = cell + int3(x, y, z);
+                
+                // Skip if out of bounds
+                if (any(neighborCell < 0) || any(neighborCell >= gridRes))
+                    continue;
 
-            // Alignment: match direction of nearby boids
-            alignment += instanceBuffer[i].direction;
+                // Calculate flat index for this neighbor cell
+                uint flatIndex = (uint)(neighborCell.x + neighborCell.y * gridRes.x + neighborCell.z * gridRes.x * gridRes.y);
 
-            // Cohesion: steer towards center of nearby boids
-            cohesion += instanceBuffer[i].position;
+                // Get the range of fish in this cell
+                int start = cellStartBuffer[flatIndex];
+                int end = cellEndBuffer[flatIndex];
 
-            neigbours++;
+                // Check if this cell has any fish
+                if (start == -1 || end == -1)
+                    continue;
+
+                // Iterate through all fish in this cell
+                for (int i = start; i < end; i++)
+                {
+                    uint otherIndex = sortedCellDataBuffer[i].fishIndex;
+                    
+                    if (otherIndex == index) continue;
+                    if (otherIndex >= (uint)instanceCount) continue;
+
+                    InstanceData other = instanceBuffer[otherIndex];
+                    float dist = distance(fish.position, other.position);
+
+                    if (dist < 5 && dist > 0.01)
+                    {
+                        // Separation: steer away from nearby boids
+                        separation += (fish.position - other.position) / dist;
+
+                        // Alignment: match direction of nearby boids
+                        alignment += other.direction;
+
+                        // Cohesion: steer towards center of nearby boids
+                        cohesion += other.position;
+
+                        neighbors++;
+                    }
+                }
+            }
         }
     }
 
-    if(neigbours > 0)
+    if (neighbors > 0)
     {
-        alignment /= neigbours;
-        cohesion = (cohesion / neigbours) - fish.position;
+        alignment /= neighbors;
+        cohesion = (cohesion / neighbors) - fish.position;
 
         separation = normalize(separation);
         alignment = normalize(alignment);
@@ -65,38 +165,23 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     }
 
     fish.direction = normalize(fish.direction) * fishSpeed;
-    fish.position += fish.direction * deltaTime; 
-
-    float3 halfBounds = bounds * 0.5;
+    fish.position += fish.direction * deltaTime;
 
     // Wrap around boundaries
     if (fish.position.x > halfBounds.x) 
-    {
         fish.position.x = -halfBounds.x;
-    }
     else if (fish.position.x < -halfBounds.x) 
-    {
         fish.position.x = halfBounds.x;
-    }
     
     if (fish.position.y > halfBounds.y) 
-    {
         fish.position.y = -halfBounds.y;
-    }
     else if (fish.position.y < -halfBounds.y) 
-    {
         fish.position.y = halfBounds.y;
-    }
     
     if (fish.position.z > halfBounds.z) 
-    {
         fish.position.z = -halfBounds.z;
-    }
     else if (fish.position.z < -halfBounds.z) 
-    {
         fish.position.z = halfBounds.z;
-    }
 
-    //Write back the updated data
     instanceBuffer[index] = fish;
 }

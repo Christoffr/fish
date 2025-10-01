@@ -1,4 +1,6 @@
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UI;
 
 [CreateAssetMenu(fileName = "BoidsSettingsOS", menuName = "Scriptable Objects/BoidsSettingsOS")]
 public class BoidsSettingsOS : ScriptableObject
@@ -12,4 +14,5 @@ public class BoidsSettingsOS : ScriptableObject
     public float Separation = 1.0f;
     public float Alignment = 1.0f;
     public float Cohesion = 1.0f;
+    public int CellSize = 5;
 }

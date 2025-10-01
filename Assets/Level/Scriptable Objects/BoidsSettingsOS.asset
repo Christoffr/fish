@@ -14,9 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Mesh: {fileID: -4747523141729969806, guid: 3c518ab5810f84e4a8d3f4b42905c2ae, type: 3}
   Material: {fileID: 2100000, guid: 1b72f4d8ee4dc0c4090cfd0353833b6c, type: 2}
-  InstanceCount: 10000
+  InstanceCount: 1500
   Bounds: {x: 50, y: 25, z: 50}
-  FishSpeed: 1
-  Separation: 1.72
-  Alignment: 1
-  Cohesion: 0.61
+  FishSpeed: 2.5
+  Separation: 0.8
+  Alignment: 1.2
+  Cohesion: 0.9
+  CellSize: 5
