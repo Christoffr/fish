@@ -55,9 +55,9 @@ public class FishGPUInstance : MonoBehaviour
         _computeShader.SetInt("instanceCount", _settings.InstanceCount);
         _computeShader.SetVector("bounds", _settings.Bounds);
         _computeShader.SetFloat("fishSpeed", _settings.FishSpeed);
-        _computeShader.SetFloat("separationWeight", _settings.Separation);
-        _computeShader.SetFloat("alignmentWeight", _settings.Alignment);
-        _computeShader.SetFloat("cohesionWeight", _settings.Cohesion);
+        _computeShader.SetFloat("separationWeight", _settings.SeparationWeight);
+        _computeShader.SetFloat("alignmentWeight", _settings.AlignmentWeight);
+        _computeShader.SetFloat("cohesionWeight", _settings.CohesionWeight);
         _computeShader.SetFloat("cellSize", _settings.CellSize);
 
         int threadGroups = Mathf.CeilToInt(_settings.InstanceCount / 64f);
